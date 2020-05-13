@@ -1,0 +1,61 @@
+---
+- name: Java Installation
+  yum: 
+   name: java-1.8.0-openjdk.x86_64
+   state: present
+  become: yes
+- name: Elastic-Search GPG key
+  command: rpm --import https://artifacts.elastic.co/GPG-KEY-elasticsearch
+  become: yes
+- name: Remote RPM install with Yum
+  yum: 
+   name: https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-7.6.0-x86_64.rpm
+   state: present
+  become: yes
+- name: Daemon-reload
+  command: systemctl daemon-reload
+  become: yes
+- name: Service Start on Reboot
+  command: systemctl enable elasticsearch
+  become: yes
+- name: Updating the config file to allow outside access
+  lineinfile:
+   destfile: /etc/elasticsearch/elasticsearch.yml
+   regexp: 'network.host:'
+   line: 'network.host: [_local_, _site_]'
+  become: yes
+- name: Set Cluster-Name
+  lineinfile:
+   destfile: /etc/elasticsearch/elasticsearch.yml
+   regexp: 'cluster.name:'
+   line: 'cluster.name: mycluster'
+  become: yes
+- name: Set Node-Name
+  lineinfile:
+   destfile: /etc/elasticsearch/elasticsearch.yml
+   regexp: 'node.name:'
+   line: 'node.name: {{ ansible_hostname }}'
+  become: yes
+     
+- name: Change Discovery 
+  lineinfile:
+   destfile: /etc/elasticsearch/elasticsearch.yml
+   regexp: 'discovery.seed_hosts:'
+   line: 'discovery.seed_hosts: ["10.128.15.202"]'
+  become: yes
+- name: Change Intial Cluster Setting 
+  lineinfile:
+   destfile: /etc/elasticsearch/elasticsearch.yml
+   regexp: 'cluster.initial_master_nodes:'
+   line: 'cluster.initial_master_nodes: ["master-1"]'
+  become: yes
+- name: Add Roles to Nodes
+  blockinfile:
+   path: /etc/elasticsearch/elasticsearch.yml
+   insertafter: EOF
+   block: |
+     node.master: true
+     node.data: false
+     node.ingest: true
+     node.ml: false
+  become: yes
